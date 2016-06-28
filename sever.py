@@ -59,7 +59,7 @@ def output_container_format():
     conn_string = "host='localhost' dbname='dockstore' user='ulim' password='3233173'"
     conn = psycopg2.connect(conn_string)
     cur = conn.cursor();
-    cur.execute("SELECT row_to_json(row(name, author, description)) FROM gmod_tools")
+    cur.execute("SELECT row_to_json(row(name, author, description, registryId)) FROM gmod_tools")
     containers_info = cur.fetchall()
     for container_info in containers_info:
         info_dict = {}
@@ -67,6 +67,7 @@ def output_container_format():
         info_dict['author'] = json.loads(container_info[0])['f2']
         info_dict['description'] = json.loads(container_info[0])['f3']
         info_dict['gitUrl'] = "git@github.com:ICGC-TCGA-PanCancer/CGP-Somatic-Docker.git"
+        info_dict['path'] = json.loads(container_info[0])['f4']
 
         output_container_arr.append(info_dict)
 
@@ -115,4 +116,4 @@ def after_request(response):
   return response
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host='127.0.0.1')
