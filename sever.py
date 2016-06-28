@@ -8,105 +8,27 @@ from functools import update_wrapper
 from flask import Flask
 
 
-
-def crossdomain(origin=None, methods=None, headers=None,
-                max_age=21600, attach_to_all=True,
-                automatic_options=True):
-    if methods is not None:
-        methods = ', '.join(sorted(x.upper() for x in methods))
-    if headers is not None and not isinstance(headers, basestring):
-        headers = ', '.join(x.upper() for x in headers)
-    if not isinstance(origin, basestring):
-        origin = ', '.join(origin)
-    if isinstance(max_age, timedelta):
-        max_age = max_age.total_seconds()
-
-    def get_methods():
-        if methods is not None:
-            return methods
-
-        options_resp = current_app.make_default_options_response()
-        return options_resp.headers['allow']
-
-    def decorator(f):
-        def wrapped_function(*args, **kwargs):
-            if automatic_options and request.method == 'OPTIONS':
-                resp = current_app.make_default_options_response()
-            else:
-                resp = make_response(f(*args, **kwargs))
-            if not attach_to_all and request.method != 'OPTIONS':
-                return resp
-
-            h = resp.headers
-
-            h['Access-Control-Allow-Origin'] = origin
-            h['Access-Control-Allow-Methods'] = get_methods()
-            h['Access-Control-Max-Age'] = str(max_age)
-            if headers is not None:
-                h['Access-Control-Allow-Headers'] = headers
-            return resp
-
-        f.provide_automatic_options = False
-        return update_wrapper(wrapped_function, f)
-    return decorator
-
 app = Flask(__name__)
 
-@app.route("/test", methods=['GET', 'OPTIONS'])
-# @crossdomain(origin='*')
+@app.route("/", methods=['GET', 'OPTIONS'])
 def output_container_format():
     output_container_arr = []
     conn_string = "host='localhost' dbname='dockstore' user='ulim' password='3233173'"
     conn = psycopg2.connect(conn_string)
     cur = conn.cursor();
-    cur.execute("SELECT row_to_json(row(name, author, description, registryId)) FROM gmod_tools")
+    cur.execute("SELECT name, author, description, registryId FROM gmod_tools")
     containers_info = cur.fetchall()
     for container_info in containers_info:
         info_dict = {}
-        info_dict['name'] = json.loads(container_info[0])['f1']
-        info_dict['author'] = json.loads(container_info[0])['f2']
-        info_dict['description'] = json.loads(container_info[0])['f3']
+        info_dict['name'] = container_info[0]
+        info_dict['author'] = container_info[1]
         info_dict['gitUrl'] = "git@github.com:ICGC-TCGA-PanCancer/CGP-Somatic-Docker.git"
-        info_dict['path'] = json.loads(container_info[0])['f4']
-
+        info_dict['path'] = container_info[3]
         output_container_arr.append(info_dict)
-
 
     cur.close()
     conn.close()
     return json.dumps(output_container_arr)
-
-@app.route("/search_keywords=<name>")
-@crossdomain(origin='*')
-def limhello(name):
-    conn_string = "host='localhost' dbname='dockstore' user='ulim' password='3233173'"
-    conn = psycopg2.connect(conn_string)
-    cur = conn.cursor()
-    pattern = u'%' + name + u'%'
-    # SELECT json_object('{key1, 6.4, key2, 9, key3, "value"}');
-    cur.execute("SELECT row_to_json(row(name, author, description, globalId)) FROM gmod_tools \
-                 WHERE LOWER(author) LIKE LOWER(%s) OR LOWER(name) LIKE LOWER(%s);", (pattern, pattern))
-    authors = cur.fetchall()
-
-    master_version = json.loads(authors[0][0])['f4'] + "/version/latest"
-
-    cur.execute("SELECT image from gmod_tools_versions_table \
-                 WHERE globalId = %s;", (master_version,))
-
-    image_url = cur.fetchall()[0][0]
-
-    result_arr = []
-    for author_item in authors:
-        result_dict = {}
-        result_dict["name"] = json.loads(author_item[0])['f1']
-        result_dict["author"] = json.loads(author_item[0])['f2']
-        result_dict["image"] = image_url
-        result_arr.append(result_dict)
-
-    # author_one = json.loads(authors[0][0])['f1']
-    cur.close()
-    conn.close()
-    return json.dumps(result_arr)
 
 @app.after_request
 def after_request(response):
@@ -116,4 +38,4 @@ def after_request(response):
   return response
 
 if __name__ == "__main__":
-    app.run(host='127.0.0.1')
+    app.run(debug=True, host='0.0.0.0')
