@@ -18,3 +18,4 @@ This work allows users to type in the local database information so as to fetch 
 
 
 ### Run on docker
+test gunpg
