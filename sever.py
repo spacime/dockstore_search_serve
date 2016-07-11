@@ -1,10 +1,6 @@
 import psycopg2
 import json
 
-from datetime import timedelta
-from flask import make_response, request, current_app
-from functools import update_wrapper
-
 from flask import Flask
 
 
